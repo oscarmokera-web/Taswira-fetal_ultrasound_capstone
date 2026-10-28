@@ -1,0 +1,8 @@
+question,result,target
+"RQ1 Plane macro-F1, strict (95% CI)",0.388 (0.316–0.444),≥ 0.70
+RQ1 Plane-present average precision (chance),0.352 (0.018),well above chance
+RQ2 Sweep-level hit@5,0.771,≥ 0.80
+Selected configuration,concat | logreg | C=0.03 | hard negatives | sweep score: max,chosen on inner validation
+RQ2 Sweep sensitivity / specificity,0.80 / 0.50,≥ 0.90 / as high as possible
+"RQ3 Worst held-out sweep type, plane recall",0.178 (horizontal),≥ 0.50
+RQ4 Size / latency,7.1 MB / 175 ms,< 20 MB / < 200 ms

@@ -1,0 +1,22 @@
+# Dataset (medical images: keep out of version control)
+NatalIA PBFUS1/
+NatalIA PBFUS1.zip
+
+# Regenerable caches and features
+cache/
+*.npy
+
+# Large model weights (regenerate from the notebook)
+*.keras
+*.h5
+
+# Notebook / Python clutter
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
