@@ -1,3 +1,5 @@
+import datetime
+import io
 import json
 from pathlib import Path
 
@@ -103,6 +105,70 @@ def brain_check(brain, frame):
                            "routine anomaly scanning still applies.")
 
 
+
+def referral_form(tier, pa, msg, view, image_name, img):
+    # Referral note for a flagged case. Demo: use made-up details, never a real client's name or ID.
+    st.subheader("Referral form")
+    st.caption("Demo only: enter made-up details. Nothing is saved or sent; the note is created on this computer.")
+    urgent = tier == "refer"
+    if st.session_state.get("referral_for") != image_name:        # a new picture: clear the old note
+        for k in ("referral_note", "referral_image"):
+            st.session_state.pop(k, None)
+        st.session_state["referral_for"] = image_name
+    with st.form("referral"):
+        c1, c2 = st.columns(2)
+        facility = c1.text_input("Referring facility", "Example Health Centre")
+        midwife = c2.text_input("Referring midwife", "")
+        client = c1.text_input("Client reference (code, not name)", "DEMO-001")
+        ga = c2.number_input("Gestational age (weeks)", min_value=4, max_value=44, value=20)
+        refer_to = c1.text_input("Refer to", "County referral hospital, obstetric ultrasound")
+        urgency = c2.selectbox("Urgency", ["Urgent: within 1 week", "Soon: within 2 weeks", "Routine"],
+                               index=0 if urgent else 1)
+        danger = st.multiselect("Danger signs present today (if any: refer to emergency care now)",
+                                ["Vaginal bleeding", "Severe headache or blurred vision", "Fits or convulsions",
+                                 "Fever", "Severe abdominal pain", "Reduced or no fetal movements", "Leaking fluid"])
+        notes = st.text_area("Clinical notes", "")
+        done = st.form_submit_button("Create referral note")
+    if done:
+        today = datetime.date.today().isoformat()
+        lines = [
+            "REFERRAL NOTE: FETAL ULTRASOUND SCREENING (STUDY DEMO)",
+            "=" * 54,
+            f"Date: {today}",
+            f"From: {facility}" + (f", midwife {midwife}" if midwife else ""),
+            f"To: {refer_to}",
+            f"Client reference: {client}",
+            f"Gestational age: {ga} weeks",
+            f"Urgency: {urgency}",
+            "",
+            "Reason for referral",
+            f"- Screening tool result: {msg}",
+            f"- Score: {pa:.2f} (flag line and refer line set by the study model)" if pa is not None else "- Score: n/a",
+            f"- View in the picture: {view}",
+            f"- Picture file: {image_name}",
+            "",
+            "Danger signs today: " + (", ".join(danger) if danger else "none reported"),
+        ]
+        if danger:
+            lines.append("  -> Danger signs present: send to emergency care now; do not wait for this referral.")
+        lines += ["", "Clinical notes: " + (notes or "none"), "",
+                  "Requested: specialist detailed anomaly scan and counselling.",
+                  "",
+                  "IMPORTANT: produced by Taswira AI, a student study prototype (Moringa capstone).",
+                  "It is not a medical device and does not diagnose. The finding must be confirmed",
+                  "by a qualified specialist before anything is said to the client about a defect.",
+                  "", "Signature of referring health worker: ____________________"]
+        st.session_state["referral_note"] = "\n".join(lines)
+        buf = io.BytesIO(); img.convert("RGB").save(buf, format="JPEG", quality=92)
+        st.session_state["referral_image"] = buf.getvalue()
+    if "referral_note" in st.session_state:
+        st.text(st.session_state["referral_note"])
+        d1, d2 = st.columns(2)
+        d1.download_button("Download referral note (.txt)", st.session_state["referral_note"],
+                           file_name="taswira_referral_note.txt", mime="text/plain")
+        d2.download_button("Download the flagged picture (.jpg)", st.session_state["referral_image"],
+                           file_name="taswira_flagged_picture.jpg", mime="image/jpeg")
+
 st.header("Taswira AI")
 st.write("Fetal AI ultrasound image analysis and prediction tool to support resource-limited midwives")
 st.warning("Study prototype for a Moringa capstone. Not a medical device: it does not diagnose, "
@@ -158,5 +224,8 @@ if uploaded_file is not None:
             tier, pa, msg = brain_check(brain, frame)
             show = {"refer": st.error, "consult": st.warning, "no_flag": st.success, "not_assessed": st.info}[tier]
             show(msg + (f" (score {pa:.2f})" if pa is not None else ""))
+            if tier in ("refer", "consult"):
+                referral_form(tier, pa, msg, PLAIN[CLASS_NAMES[best]] if p_view >= tau else "not recognised",
+                              uploaded_file.name, img)
         st.caption("Exploratory: trained on a public dataset whose source is not verified. In tests it raised false "
                    "alarms on 1 in 4 normal African head pictures. It never gives a diagnosis; any flag goes to a specialist.")
