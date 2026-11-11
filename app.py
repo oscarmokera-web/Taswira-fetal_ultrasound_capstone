@@ -216,7 +216,10 @@ if uploaded_file is not None:
     brain = load_brain()
     is_head = p_view >= tau and CLASS_NAMES[best] == "biparietal"
     if brain is None:
-        st.write("Brain check not available: run notebook section 8.2a and keep its files in the 'outputs' folder.")
+        missing = [p.name for p in (BRAIN_PATH, BRAIN_CONFIG_PATH, BRAIN_REF_PATH) if not p.exists()]
+        st.warning("Brain check not available. Missing from the 'outputs' folder: " + ", ".join(missing) +
+                   ". Run the notebook from the top (it includes section 8.2a, 'Export the brain check for the app'), "
+                   f"then refresh this page. Looking in: {BRAIN_PATH.parent}")
     else:
         if not is_head:
             st.write("The brain check runs on head pictures. This picture was not recognised as a head view.")
