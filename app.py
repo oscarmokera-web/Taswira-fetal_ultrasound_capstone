@@ -126,8 +126,8 @@ if uploaded_file is not None:
     probs = predict(interp, frame)
 
     col1, col2 = st.columns(2)
-    col1.image(img, caption="Uploaded image", use_container_width=True)
-    col2.image(frame, caption="What the model sees (cropped and cleaned)", use_container_width=True)
+    col1.image(img, caption="Uploaded image")
+    col2.image(frame, caption="What the model sees (cropped and cleaned)")
 
     p_view = 1 - probs[NO_PLANE]
     best = int(np.argmax(np.where(np.arange(len(probs)) == NO_PLANE, -1, probs)))
@@ -139,7 +139,9 @@ if uploaded_file is not None:
                 "If no picture in the sweep shows the view, scan again.")
 
     st.write("Model scores for each view")
-    st.bar_chart({PLAIN[c]: float(p) for c, p in zip(CLASS_NAMES, probs)}, horizontal=True)
+    for c, p in zip(CLASS_NAMES, probs):          # simple bars that work in any Streamlit version
+        st.write(f"{PLAIN[c]}: {float(p):.0%}")
+        st.progress(int(round(float(p) * 100)))
     st.caption("Trained mainly on dummy-belly sweeps plus real Spanish hospital images. "
                "On real African scans it named the right view about 8 times in 10.")
 
