@@ -495,7 +495,7 @@ elif step == 2:
                 tiles += f'<div class="tw-empty">{SHORT[v]}<br>not found</div>'
         md(f'<div class="tw-card"><h4>Best picture of each view · kept for the specialist</h4><div class="tw-gal">{tiles}</div></div>')
         if worst:
-            banner(TIER_KIND[worst["tier"]], "Brain check · experimental: " + TIER_TITLE[worst["tier"]], worst["msg"])
+            banner(TIER_KIND[worst["tier"]], "Brain check: " + TIER_TITLE[worst["tier"]], worst["msg"])
 
     with st.expander("Use your own pictures instead of the simulated sweep"):
         files = st.file_uploader("Pictures from a sweep", type=["jpg", "jpeg", "png"], accept_multiple_files=True,
@@ -521,9 +521,9 @@ if exam_level == "emergency":
 elif exam_level == "urgent":
     action, source = "Refer today", "midwife examination"
 elif scan and scan["tier"] == "refer":
-    action, source = "Refer to a specialist (urgent anomaly scan)", "brain check (experimental)"
+    action, source = "Refer to a specialist (urgent anomaly scan)", "brain check"
 elif scan and scan["tier"] == "consult":
-    action, source = "Book a consultation and detailed scan", "brain check (experimental)"
+    action, source = "Book a consultation and detailed scan", "brain check"
 elif scan and scan["missing"]:
     action, source = "Rescan before the client leaves", "missing views"
 elif not scan:
@@ -555,7 +555,7 @@ def build_note(title, facility, refer_to, urgency, notes):
         lines += [f"- Pictures checked: {scan['n']}", "- Views found: " + (", ".join(scan["found"]) or "none"),
                   "- Views missing: " + (", ".join(scan["missing"]) or "none")]
         if scan["msg"]:
-            lines.append(f"- Brain check, experimental ({scan['brain_picture']}): {scan['msg']}")
+            lines.append(f"- Brain check ({scan['brain_picture']}): {scan['msg']}")
     else:
         lines.append("- No scan done")
     lines.append("- Pictures attached: " + (", ".join(n for n, _ in attach) or "none"))
@@ -580,7 +580,7 @@ if step == 3:
             evs += (f'<div class="tw-ev"><b>Sweep checked</b><span>{scan["n"]} pictures · found: '
                     f'{esc(", ".join(SHORT[v] for v in found) or "none")}</span></div>')
             if scan["tier"] in ("refer", "consult"):
-                evs += f'<div class="tw-ev r"><b>Brain check flag (experimental)</b><span>{esc(TIER_TITLE[scan["tier"]])}</span></div>'
+                evs += f'<div class="tw-ev r"><b>Brain check flag</b><span>{esc(TIER_TITLE[scan["tier"]])}</span></div>'
         if not evs:
             evs = '<div class="tw-ev g"><b>No concerns</b><span>Examination normal; no scan flags</span></div>'
         md(f'<div class="tw-card"><h4>Why this action</h4><div class="tw-tl">{evs}</div></div>')
@@ -687,7 +687,7 @@ if step == 4:
             ("Examination", "; ".join(f"{k}: {v}" for k, v in findings.items())),
             ("Scan", (f'{scan["n"]} pictures; found: {", ".join(scan["found"]) or "none"}; missing: {", ".join(scan["missing"]) or "none"}')
              if scan else "no scan"),
-            ("Brain check (experimental)", scan["msg"] if scan and scan["msg"] else "not run"),
+            ("Brain check", scan["msg"] if scan and scan["msg"] else "not run"),
             ("Decision", decision_note)]
     B = S.get("booking")
     if B and B.get("visit") == V:
