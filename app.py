@@ -256,6 +256,36 @@ def go(step):
     rerun()
 
 
+# --- Follow-up booking ------------------------------------------------------------------------
+# PLACEHOLDER schedule: WHO 2016 eight-contact antenatal model (weeks). Confirm with Kenyan MOH guidance.
+ANC_WEEKS = [12, 20, 26, 30, 34, 36, 38, 40]
+SLOTS = ["08:30", "09:30", "10:30", "11:30", "14:00", "15:00"]
+
+
+def suggested_visit(weeks_now):
+    nxt = next((w for w in ANC_WEEKS if w > weeks_now), None)
+    if nxt is None:                                    # past 40 weeks: review within days
+        d, why = datetime.date.today() + datetime.timedelta(days=3), "post-term review"
+    else:
+        d, why = datetime.date.today() + datetime.timedelta(weeks=nxt - weeks_now), f"week-{nxt} antenatal contact"
+    while d.weekday() >= 5:                            # move weekends to Monday
+        d += datetime.timedelta(days=1)
+    return d, why
+
+
+def ics(b):
+    start = datetime.datetime.combine(b["date"], datetime.time(*map(int, b["time"].split(":"))))
+    end = start + datetime.timedelta(minutes=30)
+    f = "%Y%m%dT%H%M%S"
+    return "\r\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Taswira AI demo//EN", "BEGIN:VEVENT",
+                         f"UID:taswira-{b['client']}-{start.strftime(f)}@demo", f"DTSTAMP:{datetime.datetime.now().strftime(f)}",
+                         f"DTSTART:{start.strftime(f)}", f"DTEND:{end.strftime(f)}",
+                         f"SUMMARY:Antenatal follow-up ({b['client']})", f"LOCATION:{b['place']}",
+                         f"DESCRIPTION:{b['purpose']}. Reminder: {b['remind']}. Study demo.", "BEGIN:VALARM",
+                         "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:Antenatal visit tomorrow", "END:VALARM",
+                         "END:VEVENT", "END:VCALENDAR"]) + "\r\n"
+
+
 # --- Analysis ---------------------------------------------------------------------------------
 def analyse(img, name):
     frame = preprocess(img)
@@ -529,6 +559,9 @@ def build_note(title, facility, refer_to, urgency, notes):
     else:
         lines.append("- No scan done")
     lines.append("- Pictures attached: " + (", ".join(n for n, _ in attach) or "none"))
+    bk = S.get("booking")
+    if bk and bk.get("visit") == V:
+        lines += ["", f"Next visit booked: {bk['date'].strftime('%A %d %B %Y')} at {bk['time']}, {bk['place']} ({bk['remind']})"]
     lines += ["", "Decision: " + decision_note, "", "Clinical notes: " + (notes or "none"), "",
               "IMPORTANT: Taswira AI is a student study prototype (Moringa capstone), not a medical device.",
               "It does not diagnose. Any scan finding must be confirmed by a qualified specialist.",
@@ -567,6 +600,26 @@ if step == 3:
             rerun()
         if final in REFERRAL_ACTIONS:
             urg = {"Emergency referral now": 0, "Refer today": 1, "Refer to a specialist (urgent anomaly scan)": 2}.get(final, 3)
+            lab = {r["name"]: r for r in S["results"]}
+            if attach:
+                tiles = ""
+                for n, im in attach:
+                    r = lab.get(n, {})
+                    if r.get("tier") in ("refer", "consult"):
+                        tag = f'<span class="tw-tag red">{SHORT.get(r.get("view"), "Picture")} · brain flag</span>'
+                    else:
+                        tag = f'<span class="tw-tag">{SHORT.get(r.get("view"), "Picture")} · {r.get("conf", 0):.0%}</span>'
+                    tiles += f'<div class="tw-tile"><img src="{thumb(im)}" alt="{esc(n)}">{tag}</div>'
+                md(f'<div class="tw-card"><h4>Attached for the hospital · {len(attach)} picture(s)</h4>'
+                   f'<div class="tw-gal" style="grid-template-columns:repeat(3,1fr)">{tiles}</div></div>')
+                with st.expander("View attached pictures full size"):
+                    cols = st.columns(2)
+                    for k, (n, im) in enumerate(attach):
+                        r = lab.get(n, {})
+                        cols[k % 2].image(im, caption=f"{SHORT.get(r.get('view'), 'Picture')} · {n}", width=380)
+            else:
+                banner("amber", "No scan pictures attached", "Recommended: go Back and sweep, so the hospital can prepare. "
+                       "Never delay transfer to scan.")
             md('<div class="tw-label" style="margin-top:10px">Referral note</div>')
             with st.form(f"ref_{V}"):
                 facility = st.text_input("Referring facility", "Example Health Centre")
@@ -591,6 +644,37 @@ if step == 3:
             banner("amber", "Go back and sweep again", "Use Back to return to the scan screen.")
         else:
             banner("green", "Routine care", "Give the guidance card and book the next antenatal visit.")
+            sug_date, purpose = suggested_visit(int(ga))
+            md(f'<div class="tw-card"><h4>Book the follow-up visit</h4>'
+               f'<div style="color:#9fb8d6">Suggested: <b style="color:#fff">{sug_date.strftime("%A %d %B %Y")}</b> '
+               f'({esc(purpose)}, about {(sug_date - datetime.date.today()).days} days from today)</div></div>')
+            with st.form(f"book_{V}"):
+                c1, c2 = st.columns(2)
+                when = c1.date_input("Date", value=sug_date, min_value=datetime.date.today())
+                slot = c2.selectbox("Time", SLOTS, index=1)
+                place = c1.text_input("Where", "Example Health Centre, antenatal clinic")
+                remind = c2.selectbox("Reminder", ["SMS the day before", "Phone call the day before", "No reminder"])
+                bring = st.text_input("Ask the client to bring", "Mother and child health booklet")
+                booked = st.form_submit_button("Book follow-up")
+            if booked:
+                if when.weekday() >= 5:
+                    banner("amber", "That date is a weekend", "Choose a weekday, or check the clinic is open.")
+                else:
+                    S["booking"] = {"client": client, "date": when, "time": slot, "place": place, "remind": remind,
+                                    "bring": bring, "purpose": purpose, "visit": V}
+            B = S.get("booking")
+            if B and B.get("visit") == V:
+                banner("green", f"Booked: {B['date'].strftime('%a %d %b %Y')} at {B['time']}",
+                       f"{B['place']} · {B['purpose']} · {B['remind']} · bring: {B['bring']}")
+                card = "\n".join(["TASWIRA AI · APPOINTMENT CARD (STUDY DEMO)", "=" * 41, f"Client reference: {B['client']}",
+                                   f"Next visit: {B['date'].strftime('%A %d %B %Y')} at {B['time']}", f"Where: {B['place']}",
+                                   f"Purpose: {B['purpose']}", f"Please bring: {B['bring']}", f"Reminder: {B['remind']}", "",
+                                   "Come back sooner if you have bleeding, severe headache, fits, fever, leaking fluid",
+                                   "or the baby moves less than usual."])
+                d1, d2 = st.columns(2)
+                d1.download_button("Add to calendar (.ics)", ics(B), file_name="taswira_follow_up.ics", mime="text/calendar")
+                d2.download_button("Appointment card (.txt)", card, file_name="taswira_appointment_card.txt", mime="text/plain")
+                st.caption("Demo: no SMS or call is actually sent. The schedule is a placeholder to confirm with MOH guidance.")
 
 # ============================== Screen 4: summary =============================================
 if step == 4:
@@ -605,6 +689,9 @@ if step == 4:
              if scan else "no scan"),
             ("Brain check (experimental)", scan["msg"] if scan and scan["msg"] else "not run"),
             ("Decision", decision_note)]
+    B = S.get("booking")
+    if B and B.get("visit") == V:
+        rows.append(("Next visit", f"{B['date'].strftime('%a %d %b %Y')} at {B['time']} · {B['place']} · {B['remind']}"))
     md('<div class="tw-card">' + "".join(f'<div class="tw-row"><span>{esc(k)}</span><div>{esc(v)}</div></div>' for k, v in rows) + '</div>')
     st.download_button("Download visit summary (.txt)", build_note("VISIT SUMMARY (STUDY DEMO)", "Example Health Centre", "n/a", "n/a", ""),
                        file_name="taswira_visit_summary.txt", mime="text/plain")
@@ -619,7 +706,7 @@ if step < 4:
         go(step + 1)
 else:
     if n3.button("New visit"):
-        for k in ("results", "pictures", "exam", "decision", "ref_note", "ref_zip", "ref_for"):
+        for k in ("results", "pictures", "exam", "decision", "ref_note", "ref_zip", "ref_for", "booking"):
             S.pop(k, None)
         S["visit"] = V + 1
         go(1)

@@ -1,0 +1,40 @@
+{
+ "classes": [
+  "anold-chiari-malformation",
+  "arachnoid-cyst",
+  "cerebellah-hypoplasia",
+  "colphocephaly",
+  "encephalocele",
+  "holoprosencephaly",
+  "hydracenphaly",
+  "intracranial-hemorrdge",
+  "intracranial-tumor",
+  "m-magna",
+  "mild-ventriculomegaly",
+  "moderate-ventriculomegaly",
+  "normal",
+  "polencephaly",
+  "severe-ventriculomegaly"
+ ],
+ "names": {
+  "anold-chiari-malformation": "Arnold-Chiari malformation",
+  "arachnoid-cyst": "arachnoid cyst",
+  "cerebellah-hypoplasia": "cerebellar hypoplasia",
+  "colphocephaly": "colpocephaly",
+  "encephalocele": "encephalocele",
+  "holoprosencephaly": "holoprosencephaly",
+  "hydracenphaly": "hydranencephaly",
+  "intracranial-hemorrdge": "intracranial haemorrhage",
+  "intracranial-tumor": "intracranial tumor",
+  "m-magna": "mega cisterna magna",
+  "mild-ventriculomegaly": "mild ventriculomegaly",
+  "moderate-ventriculomegaly": "moderate ventriculomegaly",
+  "normal": "normal",
+  "polencephaly": "porencephaly",
+  "severe-ventriculomegaly": "severe ventriculomegaly"
+ },
+ "normal": "normal",
+ "tau_flag": 0.5,
+ "tau_refer": 0.8,
+ "ood_limit": 0.6061680614948273
+}
